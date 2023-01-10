@@ -4,7 +4,7 @@ const gameBoard = (function () {
   const boardBoxes = [...document.querySelectorAll('.board__box')];
 
   function setBox(index, player) {
-    if (boardArr[index] !== '') {
+    if (boardArr[index] !== '' || winningChain) {
       return false;
     }
     boardArr[index] = player.getSymbol();
@@ -13,47 +13,65 @@ const gameBoard = (function () {
     return true;
   }
 
-  function isFinished(index) {
-    const chains = {
-      row1: [0, 1, 2],
-      row2: [3, 4, 5],
-      row3: [6, 7, 8],
-      column1: [0, 3, 6],
-      column2: [1, 4, 7],
-      column3: [2, 5, 8],
-      diagonal1: [0, 4, 8],
-      diagonal2: [2, 4, 6],
-    }
+  function checkChain(startIndex, interval) {
+    let a = startIndex;
+    let b = startIndex + interval;
+    let c = b + interval;
 
-    function isChainHomog(chain) {
-      return boardArr[chain[0]] === boardArr[chain[1]] &&
-        boardArr[chain[1]] === boardArr[chain[2]];
-    }
-
-    for (let key in chains) {
-      let chain = chains[key];
-      if (chain.includes(index)) {
-        if (isChainHomog(chain)) {
-          winningChain = chain;
-          return true;
-        }
-      }
+    if (boardArr[a] === boardArr[b] && boardArr[b] === boardArr[c]) {
+      winningChain = [a, b, c];
+      return true;
     }
     return false;
+  }
+
+  function isFinished(index) {
+    if (checkChain(Math.floor(index / 3) * 3, 1) || checkChain(index % 3, 3)) { // checks row and column of last move
+      return true;
+    }
+    if (index === 4) { // checks both diagonals if last move was in center box
+      if (checkChain(0, 4) || checkChain(2, 2)) {
+        return true;
+      }
+    }
+    if (index === 0 || index === 8) { // checks top-left to bottom-right diagonal is last move is in box 0 or 8
+      if (checkChain(0, 4)) {
+        return true;
+      }
+    }
+    if (index === 2 || index === 6) {
+      if (checkChain(2, 2)) {
+        return true;
+      }
+    }
+    for (let box of boardArr) {
+      if (box === '') {
+        return false;
+      }
+    }
+    return true;
   }
 
   function displayResult() {
     for (let i of winningChain) {
       boardBoxes[i].classList.add('winning-box');
-
     }
   }
+
+  function getWinner(player1, player2) {
+    if (!winningChain) {
+      return null;
+    }
+    return player1.getSymbol() === boardArr[winningChain[0]] ? player1 : player2;
+  }
+
   for (let i = 0; i < 9; i++) {
     boardArr.push('');
     boardBoxes[i].setAttribute('data-index', i);
   }
 
   function resetBoard() {
+    winningChain = undefined;
     for (let i = 0; i < boardArr.length; i++) {
       boardArr[i] = '';
       boardBoxes[i].textContent = '';
@@ -63,9 +81,8 @@ const gameBoard = (function () {
     }
 
   }
-  return { boardBoxes, setBox, isFinished, displayResult, resetBoard };
+  return { boardBoxes, setBox, isFinished, displayResult, resetBoard, getWinner };
 })();
-
 
 
 const Player = function (card, symbol) {
@@ -79,17 +96,14 @@ const Player = function (card, symbol) {
     card.classList.toggle('active');
     card.classList.toggle('inactive');
   }
-
   const setActive = function () {
     card.classList.remove('inactive');
     card.classList.add('active');
   }
-
   const setInactive = function () {
     card.classList.remove('active');
     card.classList.add('inactive');
   }
-
   const identify = function () {
     const identifier = card.classList[1];
     let name = identifier.charAt(0).toUpperCase() + identifier.slice(1);
@@ -108,6 +122,7 @@ const gameControl = (function () {
   const player1 = Player(document.querySelector('.player-1'), 'X');
   const player2 = Player(document.querySelector('.player-2'), 'O');
   let activePlayer = player1;
+
   function doReset(result) {
     gameBoard.resetBoard();
     player1.setActive();
@@ -115,6 +130,28 @@ const gameControl = (function () {
     activePlayer = player1;
     result.classList.remove('visible');
   }
+
+  function displayResult(winner) {
+    const result = document.querySelector('.result');
+    console.dir(result);
+    let winningColor = '#888';
+    if (winner !== null) {
+      winningColor = winner.getColor();
+      gameBoard.displayResult();
+      result.firstElementChild.textContent = `Congratulations ${winner.identify()}!!!`
+    } else {
+      result.firstElementChild.textContent = `It's a tie.`
+    }
+    result.style.backgroundColor = winningColor;
+    const btn = document.querySelector('.btn-ok');
+    console.log('button: ' + btn);
+    result.classList.add('visible');
+    btn.style.color = winningColor;
+    btn.addEventListener('click', function () {
+      doReset(result);
+    });
+  }
+
   for (const box of boxes) {
     function play() {
       console.dir(box.dataset.index);
@@ -126,28 +163,12 @@ const gameControl = (function () {
         player2.toggleActive();
         activePlayer = activePlayer === player1 ? player2 : player1;
       } else {
-        gameBoard.displayResult();
-        const result = document.querySelector('.result');
-        document.querySelector('.result p').textContent = `Congratulations, ${activePlayer.identify()}! `;
-        let winningColor = activePlayer.getColor();
-        const btn = document.querySelector('.btn-ok');
-        btn.style.color = winningColor;
-        result.style.backgroundColor = winningColor;
-        result.classList.add('visible');
-        function resetGame() {
-          return doReset(result);
-        }
-        btn.addEventListener('click', resetGame);
+        let winner = gameBoard.getWinner(player1, player2);
+        console.dir(winner);
+        displayResult(winner);
       }
     }
     box.addEventListener('click', play);
   }
-  return {};
+  return { play };
 })();
-
-
-
-
-
-
-

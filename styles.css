@@ -20,14 +20,21 @@ html {
 body {
   min-width: 900px;
   width: 75vw;
-  border: 1px solid;
   margin: 0 auto;
   font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
 
 .game-title {
   font-size: 10rem;
+  text-transform: capitalize;
   color: rgb(22, 112, 190);
+  text-align: center;
+  margin: 3rem 0 5rem;
+}
+
+.play-area {
+  margin: 0 auto;
+  width: max-content;
 }
 
 .game-container {
